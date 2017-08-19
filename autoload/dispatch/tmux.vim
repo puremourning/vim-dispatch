@@ -79,6 +79,7 @@ function! dispatch#tmux#make(request) abort
   let pane = s:pane_id(get(readfile(s:make_pane, '', 1), 0, ''))
   if !empty(pane)
     let s:waiting[pane] = a:request
+    call s:start_poll()
     return 1
   endif
 endfunction
@@ -94,7 +95,11 @@ function! s:pane_id(pane) abort
   return id
 endfunction
 
-function! dispatch#tmux#poll() abort
+function! s:start_poll()
+  call timer_start( 250, function( 's:poll' ) )
+endfunction
+
+function! s:poll( timer_id ) abort
   if empty(s:waiting)
     return
   endif
@@ -105,6 +110,10 @@ function! dispatch#tmux#poll() abort
       call dispatch#complete(request)
     endif
   endfor
+
+  if !empty(s:waiting)
+    call s:start_poll()
+  endif
 endfunction
 
 function! dispatch#tmux#activate(pid) abort
@@ -124,7 +133,3 @@ function! dispatch#tmux#activate(pid) abort
   endif
 endfunction
 
-augroup dispatch_tmux
-  autocmd!
-  autocmd VimResized * nested if !has('gui_running') | call dispatch#tmux#poll() | endif
-augroup END
